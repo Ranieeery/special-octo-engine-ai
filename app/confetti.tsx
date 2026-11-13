@@ -1,34 +1,39 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import ReactConfetti from "react-confetti";
+
+// Carrega a lib só no cliente e fora do bundle inicial.
+const ReactConfetti = dynamic(() => import("react-confetti"), { ssr: false });
 
 export default function Confetti() {
   const [size, setSize] = useState<{ width: number; height: number } | null>(
     null,
   );
-  const [running, setRunning] = useState(true);
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setDone(true);
+      return;
+    }
     const update = () =>
       setSize({ width: window.innerWidth, height: window.innerHeight });
     update();
-    window.addEventListener("resize", update);
+    window.addEventListener("resize", update, { passive: true });
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  if (!size) return null;
+  if (!size || done) return null;
 
   return (
     <ReactConfetti
       width={size.width}
       height={size.height}
-      numberOfPieces={running ? 300 : 0}
+      numberOfPieces={300}
       recycle={false}
-      onConfettiComplete={(confetti) => {
-        setRunning(false);
-        confetti?.reset();
-      }}
+      // Desmonta ao terminar, liberando canvas e o loop de animação.
+      onConfettiComplete={() => setDone(true)}
       style={{ position: "fixed", pointerEvents: "none" }}
       aria-hidden="true"
     />
